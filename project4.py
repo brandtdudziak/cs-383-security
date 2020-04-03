@@ -4,6 +4,24 @@ from bitarray import bitarray
 from bitarray.util import ba2int, int2ba
 import re
 
+def read_n_bits(image, bits, n):
+    img = imageio.imread(image)
+    height, width, _ = img.shape
+    print("Height:", height, "Width:", width)
+
+    chars = []
+    count = 0
+    for r in range(height):
+        for c in range(width):
+            if count < n:
+                previous_length = len(chars)
+                chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
+                chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                count += len(chars) - previous_length
+    output = bitarray("".join(chars))
+    print(output.tobytes())
+
 def get_header(image, header_start, header_length, bits):
     img = imageio.imread(image)
     height, width, _ = img.shape
@@ -21,13 +39,17 @@ def get_header(image, header_start, header_length, bits):
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def text_with_header(image, bits):
+def text_with_header(image, bits, testing_multiple):
     img = imageio.imread(image)
     height, width, _ = img.shape
     print("Height:", height, "Width:", width)
 
     length = get_header(image, 0, 32, bits)
     print(length)
+    
+    if testing_multiple:
+        if input("Continue?") in ["n", "N"]: 
+            return
 
     chars = []
     count = 0
@@ -105,6 +127,26 @@ def detect_hidden(image):
     imageio.imwrite("detected_py.png", img)
 
 if __name__ == "__main__":
-    # text_with_header("sampleImages/hide_text.png", 3)
+    images = ['WinkyFace', 'DogDog', 'Woof1', 'PupFriends', 'PuppyLeash', 'Brothers', 'WideDogIsWide', 'TheGrassIsGreener', 'MoJoJoJoCouch', 'Grooming',
+    'LastBastionOfRadiance', 'Brothers_small', 'FriendlyPupper', 'GadgetRadiator', 'AlbumCover', 'TripleThreat', 'Gadget_tiny', 'Floof', 'Gadget_small',
+    'Gadget_medium', 'ExtraCredit', 'Gadget', 'StegTest']
+
+    # TODO: fix even bits / 10
+
+    for image in images:
+        for bits in [1, 3, 7]:
+            print('Testing ' + image + ".png with " + str(bits) + " bit representation")
+            text_with_header("Images/" + image + ".png", bits, True)
+
+    # text_with_header("Images/PupFriends.png", 1)
+    # text_with_header("Images/PuppyLeash.png", 1)
+
     # hidden_image("sampleImages/hide_image.png")
-    detect_hidden("sampleImages/hide_image.png")
+    # detect_hidden("sampleImages/hide_image.png")
+    # read_n_bits("Images/WinkyFace.png", 7, 1800)
+    # print(get_header("Images/WinkyFace.png", 0, 32, 1))
+    # print(get_header("Images/DogDog.png", 0, 32, 1))
+    # print(get_header("Images/Woof1.png", 0, 32, 1))
+    # print(get_header("Images/PupFriends.png", 0, 32, 1))
+    # print(get_header("Images/PuppyLeash.png", 0, 32, 1))
+    # print(get_header("Images/Brothers.png", 0, 32, 1))
