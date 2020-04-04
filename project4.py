@@ -64,6 +64,51 @@ def text_with_header(image, bits, testing_multiple):
     output = bitarray("".join(chars))
     print(output.tobytes()[4:length + 4])
 
+def even_bits_text(image, bits, testing_multiple):
+    # Don't use 'bits'
+    
+    img = imageio.imread(image)
+    height, width, _ = img.shape
+    print("Height:", height, "Width:", width)
+
+    length = get_header(image, 0, 32, bits)
+    print(length)
+    
+    if testing_multiple:
+        if input("Continue?") in ["n", "N"]: 
+            return
+
+    chars = []
+    count = 0
+    for r in range(height):
+        for c in range(width):
+
+            # change once we figure out headers
+            if count<30:
+                previous_length = len(chars)
+                
+                for color in range(3):
+                    
+                    print('color_before: ', (int2ba((img[r,c,color]).item())))
+             
+                    color_even=(list(str(int2ba((img[r,c,color]).item())).split('\'')[1]))
+
+                    # to preserve leading 0's
+                    if (len(color_even) < 8):
+                        for i in range(8-len(color_even)):
+                            color_even.insert(0,'0')
+    
+                    print('color_even: ', color_even)
+                    for i in range(len(color_even)):
+                        
+                        if (i%2!=0):
+                            print('added: ', color_even[i])
+                            chars.extend(color_even[i]) 
+                
+                count += len(chars) - previous_length
+    output = bitarray("".join(chars))
+    print(output.tobytes()[4:length + 4])
+
 def hidden_image(image):
     img = imageio.imread(image)
     height, width, channels = img.shape
@@ -133,11 +178,13 @@ if __name__ == "__main__":
 
     # TODO: fix even bits / 10
 
+    
     for image in images:
         for bits in [1, 3, 7]:
             print('Testing ' + image + ".png with " + str(bits) + " bit representation")
-            text_with_header("Images/" + image + ".png", bits, True)
+            even_bits_text("Images/" + image + ".png", 1431655765, True)
 
+    
     # text_with_header("Images/PupFriends.png", 1)
     # text_with_header("Images/PuppyLeash.png", 1)
 
