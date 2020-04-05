@@ -21,6 +21,7 @@ def read_n_bits(image, bits, n):
                 count += len(chars) - previous_length
     output = bitarray("".join(chars))
     print(output.tobytes())
+    #print(ba2int(bitarray(output)))
 
 def get_header(image, header_start, header_length, bits):
     img = imageio.imread(image)
@@ -109,27 +110,32 @@ def even_bits_text(image, bits, testing_multiple):
     output = bitarray("".join(chars))
     print(output.tobytes()[4:length + 4])
 
-def hidden_image(image):
+def hidden_image(image, testing_multiple):
     img = imageio.imread(image)
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
 
-    hidden_height = get_header(image, 0, 32, 1)
-    hidden_width = get_header(image, 32, 32, 1)
+    hidden_height = get_header(image, 0, 32,1)
+    hidden_width = get_header(image, 32, 32,1)
 
     print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
-    
+
+    if testing_multiple:
+        if input("Continue?") in ["n", "N"]: 
+            return
+
     count = 0
     chars = []
     for r in range(height):
         for c in range(width):
             if count < hidden_height * hidden_width * 32 + 64:
+                previous_length = len(chars)
                 chars.append(str(img[r,c,0] & 1))
                 chars.append(str(img[r,c,1] & 1))
                 chars.append(str(img[r,c,2] & 1))
                 # If Alpha is used
                 # chars.append(str(img[r,c,3] & 1))
-                count += 3
+                count += len(chars) - previous_length
 
     chars = chars[64:]
     # output = bitarray("".join(chars))
@@ -152,7 +158,7 @@ def hidden_image(image):
             # img[r,c][3] = alpha
             chars = chars[24:]
 
-    imageio.imwrite("altered_py.png", img)
+    imageio.imwrite("altered_" + image + ".png", img)
 
 def detect_hidden(image):
     img = imageio.imread(image)
@@ -169,7 +175,7 @@ def detect_hidden(image):
             img[r,c][1] = green
             img[r,c][2] = blue
 
-    imageio.imwrite("detected_py.png", img)
+    imageio.imwrite("detected_" + image, img)
 
 if __name__ == "__main__":
     images = ['WinkyFace', 'DogDog', 'Woof1', 'PupFriends', 'PuppyLeash', 'Brothers', 'WideDogIsWide', 'TheGrassIsGreener', 'MoJoJoJoCouch', 'Grooming',
@@ -178,11 +184,13 @@ if __name__ == "__main__":
 
     # TODO: fix even bits / 10
 
-    
-    for image in images:
-        for bits in [1, 3, 7]:
-            print('Testing ' + image + ".png with " + str(bits) + " bit representation")
-            even_bits_text("Images/" + image + ".png", 1431655765, True)
+    sus_images = ['WideDogIsWide']
+    for image in sus_images:
+        print('Testing ' + image + ".png")
+        hidden_image("Images/" + image + ".png", True)
+        #for bits in [1, 3, 7]:
+            #print('Testing ' + image + ".png with " + str(bits) + " bit representation")
+            #even_bits_text("Images/" + image + ".png", 1431655765, True)
 
     
     # text_with_header("Images/PupFriends.png", 1)
