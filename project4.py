@@ -24,6 +24,10 @@ class arrayList:
         self.data = self.data[amount:]
         self.size -= amount
 
+    def remove_from_end(self, amount):
+        self.data = self.data[:-amount]
+        self.size -= amount
+
     def get_data(self):
         return self.data[:self.size]
 
@@ -66,13 +70,15 @@ def get_header(image, chans, header_start, header_length, bits):
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def text_with_header(image, chans, bits, testing_multiple):
+def text_with_header(image, chans, header_start, bits, testing_multiple):
     img = imageio.imread(image)
     height, width, _ = img.shape
     print("Height:", height, "Width:", width)
 
-    length = get_header(image, chans, 0, 32, bits)
+    length = get_header(image, chans, header_start, 32, bits)
+    hidden_width = get_header(image, chans, header_start+32, 32,bits)
     print(length)
+    print(hidden_width)
     
     if testing_multiple:
         if input("Continue?") in ["n", "N"]: 
@@ -82,13 +88,13 @@ def text_with_header(image, chans, bits, testing_multiple):
     count = 0
     for r in range(height):
         for c in range(width):
-            if count < (length * 8) + 32:
+            if count < 1000:
                 previous_length = len(chars)
                 if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
                 if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
                 count += len(chars) - previous_length
-    output = bitarray("".join(chars))
+    output = bitarray("".join(chars))[header_start:header_start+(length*8+32)]
     print(output.tobytes()[4:length + 4])
 
 def even_bits_text(image, chans, bits, testing_multiple):
@@ -189,14 +195,13 @@ def hidden_image(image, chans, testing_multiple):
     print("100.0 percent done. Writing...")
     imageio.imwrite("altered_" + image, img)
 
-
-def faster_hidden_image(image, chans, testing_multiple):
+def faster_hidden_image(image, bit_start, chans, testing_multiple):
     img = imageio.imread(image)
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
 
-    hidden_height = get_header(image, chans, 0, 32,1)
-    hidden_width = get_header(image, chans, 32, 32,1)
+    hidden_height = get_header(image, chans, bit_start, 32,1)
+    hidden_width = get_header(image, chans, bit_start+32, 32,1)
 
     print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
 
@@ -207,17 +212,21 @@ def faster_hidden_image(image, chans, testing_multiple):
     chars = arrayList()
     for r in range(height):
         for c in range(width):
-            if chars.size < hidden_height * hidden_width * 32 + 64:
+            if chars.size < hidden_height * hidden_width * 32 + 64 + bit_start:
                 if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
                 if 1 in chans: chars.add(str(img[r,c,1] & 1))
                 if 2 in chans: chars.add(str(img[r,c,2] & 1)) 
-                if 3 in chans: chars.add(str(img[r,c,3] & 1))  
+                if 3 in chans: chars.add(str(img[r,c,3] & 1))
 
-    chars.remove(64)
+
+    print("Done gathering bits. Generating image:")
+    chars.remove(64 + bit_start)
+    if chars.size%8!=0: chars.remove_from_end(chars.size%8)
     chars = np.apply_along_axis(lambda x : ba2int(bitarray(b"".join(x))), 1, chars.get_bytes())
     img = np.reshape(chars[:hidden_width*hidden_height*3], (hidden_height, hidden_width, 3))
     print("Done, writing...")
     imageio.imwrite("fast_altered_" + image, img)
+
 
 
 def detect_hidden(image):
@@ -237,7 +246,7 @@ def detect_hidden(image):
 
     imageio.imwrite("detected_" + image, img)
 
-def get_flipped_header(image, header_start, header_length, bits):
+def get_flipped_header(image, chans, header_start, header_length, bits):
     img = imageio.imread(image)
     height, width, _ = img.shape
 
@@ -247,20 +256,22 @@ def get_flipped_header(image, header_start, header_length, bits):
         for r in range(height):
             if count < header_start + header_length:
                 previous_length = len(chars)
-                chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
-                chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
-                chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
+                if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
                 count += len(chars) - previous_length
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def flipped_text_with_header(image, bits, testing_multiple):
+def flipped_text_with_header(image, chans,bits, testing_multiple):
     img = imageio.imread(image)
     height, width, _ = img.shape
     print("Height:", height, "Width:", width)
 
-    length = get_flipped_header(image, 0, 32, bits)
+    length = get_flipped_header(image, chans,0, 32, bits)
+    # width = get_flipped_header(image,chans,32,32,bits)
     print(length)
+    # print(width)
     
     if testing_multiple:
         if input("Continue?") in ["n", "N"]: 
@@ -272,12 +283,44 @@ def flipped_text_with_header(image, bits, testing_multiple):
         for r in range(height):
             if count < (length * 8) + 32:
                 previous_length = len(chars)
-                chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
-                chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
-                chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
+                if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
                 count += len(chars) - previous_length
     output = bitarray("".join(chars))
     print(output.tobytes()[4:length + 4])
+
+def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
+    img = imageio.imread(image)
+    height, width, channels = img.shape
+    print("Height:", height, "Width:", width, "Number of Channels:", channels)
+
+    hidden_height = get_flipped_header(image, chans, bit_start, 32,1)
+    hidden_width = get_flipped_header(image, chans, bit_start+32, 32,1)
+
+    print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
+
+    if testing_multiple:
+        if input("Continue?") in ["n", "N"]: 
+            return
+
+    chars = arrayList()
+    for c in range(width):
+        for r in range(height):
+            if chars.size < hidden_height * hidden_width * 32 + 64 + bit_start:
+                if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
+                if 1 in chans: chars.add(str(img[r,c,1] & 1))
+                if 2 in chans: chars.add(str(img[r,c,2] & 1)) 
+                if 3 in chans: chars.add(str(img[r,c,3] & 1))
+
+
+    print("Done gathering bits. Generating image:")
+    chars.remove(64 + bit_start)
+    if chars.size%8!=0: chars.remove_from_end(chars.size%8)
+    chars = np.apply_along_axis(lambda x : ba2int(bitarray(b"".join(x))), 1, chars.get_bytes())
+    img = np.reshape(chars[:hidden_width*hidden_height*3], (hidden_height, hidden_width, 3))
+    print("Done, writing...")
+    imageio.imwrite("fast_altered_" + image, img)
 
 if __name__ == "__main__":
     images = ['WinkyFace', 'DogDog', 'Woof1', 'PupFriends', 'PuppyLeash', 'Brothers', 'WideDogIsWide', 'TheGrassIsGreener', 'MoJoJoJoCouch', 'Grooming',
@@ -309,8 +352,20 @@ if __name__ == "__main__":
     # TODO: investigate
     # read_n_bits("Images/WinkyFace.png", 32, 256)
     # print(get_header("Images/WinkyFace.png", 0, 32, 32))
-    faster_hidden_image("Images/Grooming.png", {1}, False)
     
+    text_with_header("fast_altered_Images/TheGrassIsGreener.png",{0,2},0,1, True)
+    # images = ['WideDogIsWide']
+
+    # for image in images:
+        
+    #     print('Testing ' + image + ".png")
+    #     flipped_faster_hidden_image("Images/" + image + ".png",1000,{0,1,2}, True)
+    # flipped_text_with_header("Images/GadgetRadiator.png",{0,1,2}, 1, True)
+    # flipped_text_with_header("Images/TheGrassIsGreener.png", 1, True)
+    # flipped_faster_hidden_image("Images/TheGrassIsGreener.png",0,{0,1,2},True)
+    # flipped_faster_hidden_image("fast_altered_Images/TheGrassIsGreener.png",0,{0,1,2}, True)
+    # detect_hidden("fast_altered_Images/TheGrassIsGreener.png")
+    # detect_hidden("fast_altered_Images/MoJoJoJoCouch.png")
     # for image in images:
     #     for bits in [1, 3, 7]:
     #         print('Testing ' + image + ".png with " + str(bits) + " bit representation")
