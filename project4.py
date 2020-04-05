@@ -68,7 +68,7 @@ def get_header(image, chans, header_start, header_length, bits):
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def text_with_header(image, chans, bits, testing_multiple):
+def text_with_header(image, bit_start, chans, bits, testing_multiple):
     img = imageio.imread(image)
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
@@ -77,7 +77,7 @@ def text_with_header(image, chans, bits, testing_multiple):
         print("Too many channels")
         return 
 
-    length = get_header(image, chans, 0, 32, bits)
+    length = get_header(image, chans, bit_start, 32, bits)
     print(length)
     
     if testing_multiple:
@@ -88,7 +88,7 @@ def text_with_header(image, chans, bits, testing_multiple):
     count = 0
     for r in range(height):
         for c in range(width):
-            if count < (length * 8) + 32:
+            if count < (length * 8) + 32 + bit_start:
                 previous_length = len(chars)
                 if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
@@ -96,7 +96,7 @@ def text_with_header(image, chans, bits, testing_multiple):
                 if 3 in chans: chars.extend(list(str(int2ba((img[r,c,3] & bits).item())).split('\'')[1]))
                 count += len(chars) - previous_length
     output = bitarray("".join(chars))
-    print(output.tobytes()[4:length + 4])
+    print(output.tobytes()[4 + bit_start:length + 4 + bit_start])
 
 def even_bits_text(image, chans, bits, testing_multiple):
     # Don't use 'bits'
@@ -202,8 +202,8 @@ def faster_hidden_image(image, bit_start, chans, testing_multiple):
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
 
-    hidden_height = get_header(image, chans, 0, 32,1)
-    hidden_width = get_header(image, chans, 32, 32,1)
+    hidden_height = get_header(image, chans, bit_start, 32,1)
+    hidden_width = get_header(image, chans, bit_start + 32, 32,1)
 
     print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
 
@@ -297,13 +297,19 @@ if __name__ == "__main__":
     # TODO: fix even bits / 10
         # param that excludes certain values from being appended
 
-    for image in images:
-        print('Testing ' + image + ".png for hidden text with all channels")
-        text_with_header("Images/" + image + ".png", {0,1,2,3}, 1, True)
+    text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
+
+    # faster_hidden_image("Images/WideDogIsWide.png", 1000, {0,1,2}, True)
+
+    # for image in images:
+    #     print('Testing ' + image + ".png for hidden text with all channels")
+    #     text_with_header("Images/" + image + ".png", 1000, {0,1,2,3}, 1, True)
 
     # for image in hidden_image_sources:
     #     print('Testing ' + image + ".png for hidden images")
     #     hidden_image("Images/" + image + ".png")
+
+    text_with_header("fast_alteted_Images/TheGrassIsGreener.png",0, {0}, 1, True)
 
     # hidden_image("Images/Grooming.png")
     #TODO: flipped??
