@@ -21,6 +21,7 @@ def read_n_bits(image, bits, n):
                 count += len(chars) - previous_length
     output = bitarray("".join(chars))
     print(output.tobytes())
+    #print(ba2int(bitarray(output)))
 
 def get_header(image, header_start, header_length, bits):
     img = imageio.imread(image)
@@ -109,16 +110,20 @@ def even_bits_text(image, bits, testing_multiple):
     output = bitarray("".join(chars))
     print(output.tobytes()[4:length + 4])
 
-def hidden_image(image):
+def hidden_image(image, testing_multiple):
     img = imageio.imread(image)
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
 
-    hidden_height = get_header(image, 0, 32, 1)
-    hidden_width = get_header(image, 32, 32, 1)
+    hidden_height = get_header(image, 0, 32,1)
+    hidden_width = get_header(image, 32, 32,1)
 
     print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
-    
+
+    if testing_multiple:
+        if input("Continue?") in ["n", "N"]: 
+            return
+
     count = 0
     chars = []
     for r in range(height):
@@ -177,7 +182,7 @@ def detect_hidden(image):
             img[r,c][1] = green
             img[r,c][2] = blue
 
-    imageio.imwrite("detected_py.png", img)
+    imageio.imwrite("detected_" + image, img)
 
 def get_flipped_header(image, header_start, header_length, bits):
     img = imageio.imread(image)
