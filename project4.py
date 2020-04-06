@@ -83,7 +83,7 @@ def text_with_header(image, bit_start, chans, bits, testing_multiple):
 
     length = get_header(image, chans, bit_start, 32, bits)
     print(length)
-    print(hidden_width)
+    # print(hidden_width)
     
     if testing_multiple:
         if input("Continue?") in ["n", "N"]: 
@@ -269,12 +269,12 @@ def get_flipped_header(image, chans, header_start, header_length, bits):
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def flipped_text_with_header(image, chans,bits, testing_multiple):
+def flipped_text_with_header(image, bit_start, chans, bits, testing_multiple):
     img = imageio.imread(image)
     height, width, _ = img.shape
     print("Height:", height, "Width:", width)
 
-    length = get_flipped_header(image, chans,0, 32, bits)
+    length = get_flipped_header(image, chans,bit_start, 32, bits)
     # width = get_flipped_header(image,chans,32,32,bits)
     print(length)
     # print(width)
@@ -284,17 +284,13 @@ def flipped_text_with_header(image, chans,bits, testing_multiple):
             return
 
     chars = []
-    count = 0
     for c in range(width):
         for r in range(height):
-            if count < (length * 8) + 32:
-                previous_length = len(chars)
-                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
-                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
-                if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
-                count += len(chars) - previous_length
+            if len(chars) < (length * 8) + 32 + bit_start:
+                for chan in chans:
+                    chars.extend(list(str(int2ba((img[r,c,chan] & bits).item())).split('\'')[1]))
     output = bitarray("".join(chars))
-    print(output.tobytes()[4:length + 4])
+    print(output.tobytes()[bit_start + 4 : bit_start + length + 4])
 
 def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
     img = imageio.imread(image)
@@ -324,9 +320,16 @@ def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
     chars.remove(64 + bit_start)
     if chars.size%8!=0: chars.remove_from_end(chars.size%8)
     chars = np.apply_along_axis(lambda x : ba2int(bitarray(b"".join(x))), 1, chars.get_bytes())
-    img = np.reshape(chars[:hidden_width*hidden_height*3], (hidden_height, hidden_width, 3))
-    print("Done, writing...")
-    imageio.imwrite("fast_altered_" + image, img)
+    #TODO: construct only green
+    print(chars)
+    chars = np.insert(chars, chars[::3], 0, 0)
+    # for i in range(len(chars)):
+    #     if i % 3 != 1: chars = np.insert(chars, i, 0)
+    #     if i % 1000 == 0: print(i)
+    print(chars)
+    # img = np.reshape(chars[:hidden_width*hidden_height*3*3], (hidden_height*3, hidden_width, 3))
+    # print("Done, writing...")
+    # imageio.imwrite("fast_altered_" + image, img)
 
 if __name__ == "__main__":
     images = ['WinkyFace', 'DogDog', 'Woof1', 'PupFriends', 'PuppyLeash', 'Brothers', 'WideDogIsWide', 'TheGrassIsGreener', 'MoJoJoJoCouch', 'Grooming',
@@ -338,9 +341,17 @@ if __name__ == "__main__":
     # TODO: fix even bits / 10
         # param that excludes certain values from being appended
 
-    text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
+    # text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
 
     # faster_hidden_image("Images/WideDogIsWide.png", 1000, {0,1,2}, True)
+    # flipped_faster_hidden_image("Images/TheGrassIsGreener.png", 0, {0,1,2}, True)
+
+    #TODO: test Bothers_found
+    print("Testing RGB combinations on Grooming_found")
+    for channel_comb in [[0,1,2],[0,1],[0,2],[1,2],[0],[1],[2]]:
+        for bit_start in [0, 1000]:
+            print("Channel combination:",channel_comb, "Bit Start:", bit_start)
+            flipped_text_with_header("Images/Grooming_found", bit_start, channel_comb, 1, True)
 
     # for image in images:
     #     print('Testing ' + image + ".png for hidden text with all channels")
@@ -350,7 +361,7 @@ if __name__ == "__main__":
     #     print('Testing ' + image + ".png for hidden images")
     #     hidden_image("Images/" + image + ".png")
 
-    text_with_header("fast_alteted_Images/TheGrassIsGreener.png",0, {0}, 1, True)
+    # text_with_header("fast_alteted_Images/TheGrassIsGreener.png",0, {0}, 1, True)
 
     # hidden_image("Images/Grooming.png")
     #TODO: flipped??
@@ -372,7 +383,7 @@ if __name__ == "__main__":
     # detect_hidden("Images/Brothers_found.png")
     # print(get_header("Images/Gadget.png", {0,1,2,3}, 0, 32, 1))
     
-    text_with_header("fast_altered_Images/TheGrassIsGreener.png",{0,2},0,1, True)
+    # text_with_header("fast_altered_Images/TheGrassIsGreener.png",{0,2},0,1, True)
     # images = ['WideDogIsWide']
 
     # for image in images:
