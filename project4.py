@@ -318,7 +318,6 @@ def flipped_text_with_header(image, bit_start, chans,bits,testing_multiple):
             return
 
     chars = []
-    count = 0
     for c in range(width):
         for r in range(height):
             if count < (length * 8) + 32 + bit_start:
@@ -362,9 +361,16 @@ def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
     chars.remove(64 + bit_start)
     if chars.size%8!=0: chars.remove_from_end(chars.size%8)
     chars = np.apply_along_axis(lambda x : ba2int(bitarray(b"".join(x))), 1, chars.get_bytes())
-    img = np.reshape(chars[:hidden_width*hidden_height*3], (hidden_height, hidden_width, 3))
-    print("Done, writing...")
-    imageio.imwrite("fast_altered_" + image, img)
+    #TODO: construct only green
+    print(chars)
+    chars = np.insert(chars, chars[::3], 0, 0)
+    # for i in range(len(chars)):
+    #     if i % 3 != 1: chars = np.insert(chars, i, 0)
+    #     if i % 1000 == 0: print(i)
+    print(chars)
+    # img = np.reshape(chars[:hidden_width*hidden_height*3*3], (hidden_height*3, hidden_width, 3))
+    # print("Done, writing...")
+    # imageio.imwrite("fast_altered_" + image, img)
 
 if __name__ == "__main__":
     images = ['WinkyFace', 'DogDog', 'Woof1', 'PupFriends', 'PuppyLeash', 'Brothers', 'WideDogIsWide', 'TheGrassIsGreener', 'MoJoJoJoCouch', 'Grooming',
@@ -379,6 +385,14 @@ if __name__ == "__main__":
     # text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
 
     # faster_hidden_image("Images/WideDogIsWide.png", 1000, {0,1,2}, True)
+    # flipped_faster_hidden_image("Images/TheGrassIsGreener.png", 0, {0,1,2}, True)
+
+    #TODO: test Bothers_found
+    print("Testing RGB combinations on Grooming_found")
+    for channel_comb in [[0,1,2],[0,1],[0,2],[1,2],[0],[1],[2]]:
+        for bit_start in [0, 1000]:
+            print("Channel combination:",channel_comb, "Bit Start:", bit_start)
+            flipped_text_with_header("Images/Grooming_found", bit_start, channel_comb, 1, True)
 
     # for image in images:
     #     print('Testing ' + image + ".png for hidden text with all channels")
