@@ -64,10 +64,31 @@ def get_header(image, chans, header_start, header_length, bits):
         for c in range(width):
             if count < header_start + header_length:
                 previous_length = len(chars)
+                # if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
                 if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
                 if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                # if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 3 in chans: chars.extend(list(str(int2ba((img[r,c,3] & bits).item())).split('\'')[1]))
+
+                count += len(chars) - previous_length
+    output = "".join(chars)[header_start:header_start + header_length]
+    return ba2int(bitarray(output))
+
+def get_header_not_lsb(image, chans, header_start, header_length, bits):
+    img = imageio.imread(image)
+    height, width, _ = img.shape
+
+    chars = []
+    count = 0
+    for r in range(height):
+        for c in range(width):
+            if count < header_start + header_length:
+                previous_length = len(chars)
+                if 0 in chans: chars.extend(list(str((int2ba((img[r,c,0] & bits)>>(bits/2)).item())).split('\'')[1]))
+                if 1 in chans: chars.extend(list(str((int2ba((img[r,c,1] & bits)>>(bits/2)).item())).split('\'')[1]))
+                if 2 in chans: chars.extend(list(str((int2ba((img[r,c,2] & bits)>>(bits/2)).item())).split('\'')[1]))
+                if 3 in chans: chars.extend(list(str((int2ba((img[r,c,3] & bits)>>(bits/2)).item())).split('\'')[1]))
                 count += len(chars) - previous_length
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
@@ -83,22 +104,27 @@ def text_with_header(image, bit_start, chans, bits, testing_multiple):
 
     length = get_header(image, chans, bit_start, 32, bits)
     print(length)
+
+    hidden_width = get_header(image, chans, bit_start+32, 32, bits)
     print(hidden_width)
     
     if testing_multiple:
         if input("Continue?") in ["n", "N"]: 
             return
-
+    # length = 1000
     chars = []
     count = 0
     for r in range(height):
         for c in range(width):
             if count < (length * 8) + 32 + bit_start:
                 previous_length = len(chars)
+                # if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
                 if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
                 if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                # if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 if 3 in chans: chars.extend(list(str(int2ba((img[r,c,3] & bits).item())).split('\'')[1]))
+
                 count += len(chars) - previous_length
     output = bitarray("".join(chars))[bit_start:bit_start+(length*8+32)]
     print(output.tobytes()[4:length + 4])
@@ -201,14 +227,14 @@ def hidden_image(image, chans, testing_multiple):
     print("100.0 percent done. Writing...")
     imageio.imwrite("altered_" + image, img)
 
-def faster_hidden_image(image, bit_start, chans, testing_multiple):
+def faster_hidden_image(image, bit_start, chans, bits, testing_multiple):
     img = imageio.imread(image)
     height, width, channels = img.shape
     print("Height:", height, "Width:", width, "Number of Channels:", channels)
 
     hidden_height = get_header(image, chans, bit_start, 32,1)
     hidden_width = get_header(image, chans, bit_start+32, 32,1)
-
+    # hidden_width = hidden_height
     print("Hidden height:", hidden_height, "Hidden width:", hidden_width)
 
     if testing_multiple:
@@ -219,10 +245,14 @@ def faster_hidden_image(image, bit_start, chans, testing_multiple):
     for r in range(height):
         for c in range(width):
             if chars.size < hidden_height * hidden_width * 32 + 64 + bit_start:
-                if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
-                if 1 in chans: chars.add(str(img[r,c,1] & 1))
-                if 2 in chans: chars.add(str(img[r,c,2] & 1)) 
-                if 3 in chans: chars.add(str(img[r,c,3] & 1))
+               
+                # if 2 in chans: chars.add(str(img[r,c,2] & bits)) 
+                if 0 in chans: chars.add(str(img[r,c,0] & bits)) 
+                if 1 in chans: chars.add(str(img[r,c,1] & bits))
+                if 2 in chans: chars.add(str(img[r,c,2] & bits)) 
+                # if 0 in chans: chars.add(str(img[r,c,0] & bits)) 
+                # if 3 in chans: chars.add(str(img[r,c,3] & bits))  
+                    
 
 
     print("Done gathering bits. Generating image:")
@@ -262,22 +292,26 @@ def get_flipped_header(image, chans, header_start, header_length, bits):
         for r in range(height):
             if count < header_start + header_length:
                 previous_length = len(chars)
-                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
-                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
                 if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                # if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
+                # if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                    
                 count += len(chars) - previous_length
     output = "".join(chars)[header_start:header_start + header_length]
     return ba2int(bitarray(output))
 
-def flipped_text_with_header(image, chans,bits, testing_multiple):
+def flipped_text_with_header(image, bit_start, chans,bits,testing_multiple):
     img = imageio.imread(image)
     height, width, _ = img.shape
     print("Height:", height, "Width:", width)
 
-    length = get_flipped_header(image, chans,0, 32, bits)
-    # width = get_flipped_header(image,chans,32,32,bits)
+    length = get_flipped_header(image, chans, bit_start, 32, bits)
     print(length)
-    # print(width)
+
+    hidden_width = get_flipped_header(image, chans, bit_start+32, 32, bits)
+    print(hidden_width)
     
     if testing_multiple:
         if input("Continue?") in ["n", "N"]: 
@@ -287,13 +321,15 @@ def flipped_text_with_header(image, chans,bits, testing_multiple):
     count = 0
     for c in range(width):
         for r in range(height):
-            if count < (length * 8) + 32:
+            if count < (length * 8) + 32 + bit_start:
                 previous_length = len(chars)
-                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
-                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
                 if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                # if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
+                if 1 in chans: chars.extend(list(str(int2ba((img[r,c,1] & bits).item())).split('\'')[1]))
+                # if 2 in chans: chars.extend(list(str(int2ba((img[r,c,2] & bits).item())).split('\'')[1]))
+                if 0 in chans: chars.extend(list(str(int2ba((img[r,c,0] & bits).item())).split('\'')[1]))
                 count += len(chars) - previous_length
-    output = bitarray("".join(chars))
+    output = bitarray("".join(chars))[bit_start:bit_start+(length*8+32)]
     print(output.tobytes()[4:length + 4])
 
 def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
@@ -314,10 +350,12 @@ def flipped_faster_hidden_image(image, bit_start, chans, testing_multiple):
     for c in range(width):
         for r in range(height):
             if chars.size < hidden_height * hidden_width * 32 + 64 + bit_start:
-                if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
-                if 1 in chans: chars.add(str(img[r,c,1] & 1))
                 if 2 in chans: chars.add(str(img[r,c,2] & 1)) 
-                if 3 in chans: chars.add(str(img[r,c,3] & 1))
+                # if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
+                if 1 in chans: chars.add(str(img[r,c,1] & 1))
+                # if 2 in chans: chars.add(str(img[r,c,2] & 1)) 
+                if 0 in chans: chars.add(str(img[r,c,0] & 1)) 
+                if 3 in chans: chars.add(str(img[r,c,3] & 1))  
 
 
     print("Done gathering bits. Generating image:")
@@ -338,7 +376,7 @@ if __name__ == "__main__":
     # TODO: fix even bits / 10
         # param that excludes certain values from being appended
 
-    text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
+    # text_with_header("Images/Brothers_found.png", 0, {1}, 1, True)
 
     # faster_hidden_image("Images/WideDogIsWide.png", 1000, {0,1,2}, True)
 
@@ -350,7 +388,7 @@ if __name__ == "__main__":
     #     print('Testing ' + image + ".png for hidden images")
     #     hidden_image("Images/" + image + ".png")
 
-    text_with_header("fast_alteted_Images/TheGrassIsGreener.png",0, {0}, 1, True)
+    # text_with_header("fast_alteted_Images/TheGrassIsGreener.png",0, {0}, 1, True)
 
     # hidden_image("Images/Grooming.png")
     #TODO: flipped??
@@ -372,16 +410,39 @@ if __name__ == "__main__":
     # detect_hidden("Images/Brothers_found.png")
     # print(get_header("Images/Gadget.png", {0,1,2,3}, 0, 32, 1))
     
-    text_with_header("fast_altered_Images/TheGrassIsGreener.png",{0,2},0,1, True)
-    # images = ['WideDogIsWide']
+    # flipped_text_with_header("fast_altered_Images/MoJoJoJoCouch.png", 0,{0,1,2},1,True)
+
+    # images = ['WideDogIsWide', 'LastBastionOfRadiance','Grooming']
+    images = ['WideDogIsWide']
+    # images= ['Grooming']
+    for image in images:
+        print('Testing ' + image + ".png")
+        # text_with_header("fast_altered_Images/" + image + ".png",0,{0},1, True)
+        text_with_header("fast_altered_Images/" + image + ".png",0,{0},1, True)
+
+        # faster_hidden_image("Images/" + image + ".png",0,{0},1, True)
+
+
+    # images = ['PupFriends', 'PuppyLeash', 'WideDogIsWide', 'Brothers_small','FriendlyPupper']
+    # for image in images:
+    #     print('Testing ' + image + ".png")
+    #     text_with_header("Images/" + image + ".png",0,{0,1,2},2, True)
+    
 
     # for image in images:
         
     #     print('Testing ' + image + ".png")
     #     flipped_faster_hidden_image("Images/" + image + ".png",1000,{0,1,2}, True)
     # flipped_text_with_header("Images/GadgetRadiator.png",{0,1,2}, 1, True)
-    # flipped_text_with_header("Images/TheGrassIsGreener.png", 1, True)
-    # flipped_faster_hidden_image("Images/TheGrassIsGreener.png",0,{0,1,2},True)
+    # text_with_header("Images/WinkyFace.png", 0,{0,2},1, True)
+
+    
+
+    # text_with_header("Images/WinkyFace.png", 0,{0,1,2},1, True)
+    # faster_hidden_image("Images/WinkyFace.png",0,{0,2},True)
+
+
+
     # flipped_faster_hidden_image("fast_altered_Images/TheGrassIsGreener.png",0,{0,1,2}, True)
     # detect_hidden("fast_altered_Images/TheGrassIsGreener.png")
     # detect_hidden("fast_altered_Images/MoJoJoJoCouch.png")
